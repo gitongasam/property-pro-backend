@@ -1,0 +1,114 @@
+server:
+  port: 8080
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: propertypro
+  # Local secrets (KCB keys, ngrok URL...) as KEY=value lines; real environment variables still win.
+  config:
+    import: optional:file:.env[.properties]
+  threads:
+    virtual:
+      enabled: true
+
+  # Runtime connection: the APP account (not the owner, no RLS bypass).
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/propertypros}
+    username: ${DB_APP_USER:propertypro_app}
+    password: ${DB_APP_PASSWORD:change-me-app}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+
+
+  # Flyway migrates as the OWNER account, over its own connection
+  flyway:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/propertypros}
+    user: ${DB_OWNER_USER:postgres}
+    password: ${DB_OWNER_PASSWORD:password}
+    locations: classpath:db/migration
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. 'validate' is avoided because Hibernate reports
+      # citext/jsonb/inet columns as mismatches even though they map correctly.
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+
+app:
+  jwt:
+    # Base64-encoded secret of at least 32 bytes. Generate one with:  openssl rand -base64 48
+    secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1iZWZvcmUtZGVwbG95aW5nLTEyMzQ1Njc4OTA=}
+    access-token-minutes: 15
+    refresh-token-days: 7
+  signup:
+    trial-plan: GROWTH
+    trial-days: 14
+    # New accounts confirm their mobile number with an SMS code before using the app
+    phone-verification: ${SIGNUP_PHONE_VERIFICATION:true}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  crypto:
+    # Base64 AES-256 key for encrypting ID numbers, bank accounts and Daraja keys.
+    # Generate one with:  openssl rand -base64 32   (losing it makes stored secrets unreadable)
+    key: ${CRYPTO_KEY:ZGV2LW9ubHkta2V5LWNoYW5nZS1tZS0zMi1ieXRlcyE=}
+  jobs:
+    enabled: ${JOBS_ENABLED:true}
+  web:
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    public-api-url: ${PUBLIC_API_URL:http://localhost:8080}
+  kcb:
+    # KCB's public key for Buni payment notifications (from the Buni portal), PEM or base64.
+    # Without it every KCB notification is refused.
+    ipn-public-key: ${KCB_IPN_PUBLIC_KEY:}
+    # false only to post test notifications locally; never in production
+    verify-signature: ${KCB_VERIFY_SIGNATURE:true}
+  kcb-stk:
+    # Our own KCB Buni account for subscription payments (STK Push to the owner's phone).
+    # UAT = https://uat.buni.kcbgroup.com (test); PRODUCTION = live money.
+    environment: ${KCB_STK_ENV:UAT}
+    # Optional host override, e.g. the production URL shown on the Buni portal
+    base-url: ${KCB_STK_BASE_URL:}
+    consumer-key: ${KCB_STK_CONSUMER_KEY:}
+    consumer-secret: ${KCB_STK_CONSUMER_SECRET:}
+    org-short-code: ${KCB_STK_SHORTCODE:522522}
+    org-pass-key: ${KCB_STK_PASSKEY:}
+    shared-short-code: ${KCB_STK_SHARED_SHORTCODE:true}
+    # Prepended to the payment reference as "<prefix>-<ref>" (e.g. your KCB account or Till number)
+    invoice-prefix: ${KCB_STK_INVOICE_PREFIX:}
+    # Random secret in the callback URL:  openssl rand -hex 24
+    callback-token: ${KCB_STK_CALLBACK_TOKEN:}
+    # UAT only: charge this many shillings instead of the plan price
+    test-amount: ${KCB_STK_TEST_AMOUNT:1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.propertypro: INFO
+
+
+# SMS through Zettatel. Leave the user id or password empty to only log messages (local dev).
+zettatel:
+  user-id: ${ZETTATEL_USER:}
+  password: ${ZETTATEL_PASS:}
+  sender-id: ${ZETTATEL_SENDER_ID:KamkunjiHub}

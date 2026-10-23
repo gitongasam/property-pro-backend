@@ -147,3 +147,17 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Java / Maven / IDE
+target/
+*.class
+*.jar
+*.war
+.idea/
+*.iml
+.vscode/
+.DS_Store
+hs_err_pid*
+
+# Local secrets (KCB, Zettatel, ngrok URL...) live in .env, never committed
+.env
