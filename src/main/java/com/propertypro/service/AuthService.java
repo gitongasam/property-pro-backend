@@ -32,4 +32,11 @@ public interface AuthService {
 
     /** Confirms the mobile number and returns fresh tokens that carry the confirmed flag. */
     AuthResponse verifyPhone(AuthenticatedUser principal, String code, ClientInfo client);
+
+    /**
+     * Changes the signed-in user's password after checking the current one. Every other
+     * session is signed out; the caller gets fresh tokens.
+     */
+    AuthResponse changePassword(AuthenticatedUser principal, String currentPassword, String newPassword,
+                                ClientInfo client);
 }

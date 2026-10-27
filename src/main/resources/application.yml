@@ -91,6 +91,21 @@ app:
     callback-token: ${KCB_STK_CALLBACK_TOKEN:}
     # UAT only: charge this many shillings instead of the plan price
     test-amount: ${KCB_STK_TEST_AMOUNT:1}
+  subscription:
+    # Days a lapsed paid subscription keeps working (PAST_DUE) before it turns read-only
+    grace-days: ${SUBSCRIPTION_GRACE_DAYS:7}
+    # Renewal reminder (email + SMS to the owner) this many days before the period ends
+    reminder-days: ${SUBSCRIPTION_REMINDER_DAYS:5}
+  mail:
+    # SMTP server for email. Empty = emails are only written to the log.
+    # Gmail: smtp.gmail.com, 587, your address, an App Password (not your normal password)
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    # Sender address; most providers require it to be the account or a verified domain
+    from: ${MAIL_FROM:}
+    from-name: ${MAIL_FROM_NAME:PropertyPro}
   admin:
     # First super admin, created at startup if no account has this email. Remove the password afterwards.
     # With a phone, the admin confirms it by SMS code at first sign-in.

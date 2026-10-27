@@ -79,4 +79,17 @@ public final class AuthDtos {
     public record VerifyPhoneRequest(@NotBlank @Pattern(regexp = "^\\s*\\d{6}\\s*$", message = "must be the 6-digit code") String code) {}
 
     public record CodeSentResponse(String phone, long expiresInSeconds, long resendInSeconds) {}
+
+    public record ForgotPasswordRequest(@NotBlank @Email @Size(max = 200) String email) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank String token,
+            @NotBlank @Size(min = 8, max = 72, message = "must be 8 to 72 characters") String password) {}
+
+    public record ChangePasswordRequest(
+            @NotBlank String currentPassword,
+            @NotBlank @Size(min = 8, max = 72, message = "must be 8 to 72 characters") String newPassword) {}
+
+    /** Same answer whether or not the email has an account, so it cannot be used to probe for users. */
+    public record MessageResponse(String message) {}
 }

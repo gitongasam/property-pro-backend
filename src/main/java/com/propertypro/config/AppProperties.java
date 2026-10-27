@@ -6,7 +6,7 @@ import java.util.List;
 
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(Jwt jwt, Signup signup, Cors cors, Crypto crypto, Jobs jobs, Web web, Kcb kcb,
-                            KcbStk kcbStk, Admin admin) {
+                            KcbStk kcbStk, Admin admin, Mail mail, Subscription subscription) {
 
     public record Jwt(String secret, long accessTokenMinutes, long refreshTokenDays) {}
 
@@ -51,4 +51,17 @@ public record AppProperties(Jwt jwt, Signup signup, Cors cors, Crypto crypto, Jo
      */
     public record Admin(String bootstrapEmail, String bootstrapPassword, String bootstrapFirstName,
                         String bootstrapPhone) {}
+
+    /**
+     * Outgoing email over SMTP (Gmail, Zoho, Brevo, SendGrid, SES...). Empty {@code host} = emails are
+     * only logged. Port 587 uses STARTTLS, port 465 implicit TLS.
+     */
+    public record Mail(String host, Integer port, String username, String password, String from, String fromName) {}
+
+    /**
+     * Paid subscriptions: {@code graceDays} after the period ends the account stays fully usable
+     * (PAST_DUE), then it becomes read-only until paid. {@code reminderDays} before the end the owner
+     * is reminded to renew.
+     */
+    public record Subscription(int graceDays, int reminderDays) {}
 }

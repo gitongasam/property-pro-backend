@@ -302,6 +302,33 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     // ------------------------------------------------------------------
+    // Change password (signed in): check the current one, end other sessions
+    // ------------------------------------------------------------------
+    public AuthResponse changePassword(AuthenticatedUser principal, String currentPassword, String newPassword,
+                                       ClientInfo client) {
+        User user = system.asSystem(() -> users.findById(principal.userId())
+                .filter(u -> u.getDeletedAt() == null && u.getStatus() == User.Status.ACTIVE)
+                .orElseThrow(() -> ApiException.unauthorized("Account not found")));
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw ApiException.badRequest("WRONG_PASSWORD", "Your current password is not right");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw ApiException.badRequest("SAME_PASSWORD", "Choose a password different from the current one");
+        }
+        String newHash = passwordEncoder.encode(newPassword);
+        system.asSystem(() -> {
+            jdbc.update("UPDATE users SET password_hash = ? WHERE id = ?", newHash, user.getId());
+            refreshTokens.revokeAllForUser(user.getId(), OffsetDateTime.now());
+            jdbc.update("UPDATE password_reset_tokens SET expires_at = now() WHERE user_id = ? AND used_at IS NULL AND expires_at > now()",
+                    user.getId());
+            return null;
+        });
+        log.info("User {} changed their password; other sessions signed out", user.getId());
+        return issueTokens(user, client);
+    }
+
+    @Override
+    // ------------------------------------------------------------------
     // Current user profile, organisation and plan
     // ------------------------------------------------------------------
     public MeResponse me(AuthenticatedUser principal) {

@@ -9,9 +9,8 @@ import java.util.UUID;
 
 /**
  * Where messages actually go. The defaults only log, so the app runs without
- * accounts. To send for real, add a @Component implementing SmsGateway
- * (e.g. Africa's Talking) or EmailGateway (e.g. SendGrid / SES); it replaces
- * the logging one automatically.
+ * accounts. Real gateways replace them automatically when configured:
+ * ZettatelSmsProvider (zettatel.*) and SmtpEmailGateway (app.mail.host).
  */
 @Configuration
 public class MessageGateways {

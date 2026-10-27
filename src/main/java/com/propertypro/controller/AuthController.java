@@ -2,15 +2,20 @@ package com.propertypro.controller;
 
 import com.propertypro.dto.AuthDtos.AcceptInviteRequest;
 import com.propertypro.dto.AuthDtos.AuthResponse;
+import com.propertypro.dto.AuthDtos.ChangePasswordRequest;
 import com.propertypro.dto.AuthDtos.ClientInfo;
 import com.propertypro.dto.AuthDtos.CodeSentResponse;
+import com.propertypro.dto.AuthDtos.ForgotPasswordRequest;
 import com.propertypro.dto.AuthDtos.LoginRequest;
 import com.propertypro.dto.AuthDtos.MeResponse;
+import com.propertypro.dto.AuthDtos.MessageResponse;
 import com.propertypro.dto.AuthDtos.RefreshRequest;
+import com.propertypro.dto.AuthDtos.ResetPasswordRequest;
 import com.propertypro.dto.AuthDtos.SignupRequest;
 import com.propertypro.dto.AuthDtos.VerifyPhoneRequest;
 import com.propertypro.security.AuthenticatedUser;
 import com.propertypro.service.AuthService;
+import com.propertypro.service.PasswordResetService;
 import com.propertypro.service.PhoneVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +38,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final PhoneVerificationService phoneVerification;
+    private final PasswordResetService passwordReset;
 
     @Operation(summary = "Create an organisation with a free trial and its first (owner) user")
     @PostMapping("/signup")
@@ -82,6 +88,28 @@ public class AuthController {
     @PostMapping("/phone/verify")
     public AuthResponse verifyPhone(@Valid @RequestBody VerifyPhoneRequest body, HttpServletRequest request) {
         return authService.verifyPhone(AuthenticatedUser.current(), body.code(), client(request));
+    }
+
+    @Operation(summary = "Forgot password: email (and SMS to a confirmed phone) a one-time reset link valid 1 hour")
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest body, HttpServletRequest request) {
+        passwordReset.requestReset(body.email(), client(request).ipAddress());
+        return new MessageResponse("If an account exists for that email, a reset link is on its way.");
+    }
+
+    @Operation(summary = "Set a new password with the token from the reset link; signs out every session")
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest body) {
+        passwordReset.resetPassword(body.token(), body.password());
+    }
+
+    @Operation(summary = "Change the signed-in user's password; other sessions are signed out, new tokens returned")
+    @PostMapping("/password/change")
+    public AuthResponse changePassword(@Valid @RequestBody ChangePasswordRequest body, HttpServletRequest request) {
+        return authService.changePassword(AuthenticatedUser.current(), body.currentPassword(), body.newPassword(),
+                client(request));
     }
 
     private static ClientInfo client(HttpServletRequest request) {
