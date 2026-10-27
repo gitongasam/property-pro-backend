@@ -91,6 +91,13 @@ app:
     callback-token: ${KCB_STK_CALLBACK_TOKEN:}
     # UAT only: charge this many shillings instead of the plan price
     test-amount: ${KCB_STK_TEST_AMOUNT:1}
+  admin:
+    # First super admin, created at startup if no account has this email. Remove the password afterwards.
+    # With a phone, the admin confirms it by SMS code at first sign-in.
+    bootstrap-email: ${ADMIN_BOOTSTRAP_EMAIL:}
+    bootstrap-password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+    bootstrap-first-name: ${ADMIN_BOOTSTRAP_FIRST_NAME:Platform Admin}
+    bootstrap-phone: ${ADMIN_BOOTSTRAP_PHONE:}
 
 management:
   endpoints:

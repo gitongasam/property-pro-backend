@@ -60,6 +60,13 @@ public class Organization {
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> settings = new HashMap<>();
 
+    /** Set by a platform admin; a suspended organisation can only sign in and read /auth/me. */
+    @Column(name = "suspended_at")
+    private OffsetDateTime suspendedAt;
+
+    @Column(name = "suspended_reason")
+    private String suspendedReason;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

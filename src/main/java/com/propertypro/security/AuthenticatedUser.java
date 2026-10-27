@@ -16,6 +16,11 @@ public record AuthenticatedUser(
         /** False until the user confirms their mobile number with the SMS code. */
         boolean phoneVerified) {
 
+    /** A super admin / platform staff account (no organisation). */
+    public boolean isPlatform() {
+        return "PLATFORM".equals(userType);
+    }
+
     /** The current user, or an exception if the request is anonymous. */
     public static AuthenticatedUser current() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

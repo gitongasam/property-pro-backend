@@ -55,6 +55,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        // Platform console; each endpoint narrows this further with @PreAuthorize
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasAnyAuthority("PLATFORM_ADMIN", "PLATFORM_BILLING", "PLATFORM_SUPPORT")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->

@@ -230,7 +230,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         sub.setGraceEndsAt(null);
         sub.setCancelAtPeriodEnd(false);
         subscriptions.save(sub);
-        jdbc.sql("UPDATE organizations SET status = 'ACTIVE' WHERE id = ?").param(p.organizationId()).update();
+        // A payment never lifts an admin suspension; reactivation is a deliberate admin action
+        jdbc.sql("UPDATE organizations SET status = 'ACTIVE' WHERE id = ? AND status <> 'SUSPENDED'")
+                .param(p.organizationId()).update();
     }
 
     private void fail(Pending p, int resultCode, String resultDesc, String raw) {

@@ -141,12 +141,13 @@ public class BillingJobs {
         }
     }
 
-    /** Organisations whose subscription still allows writes (trial running, active, or in grace). */
+    /** Organisations whose subscription still allows writes (trial running, active, or in grace) and not suspended. */
     private List<UUID> billableOrganisations() {
         return system.asSystem(() -> jdbc.sql("""
                         SELECT o.id FROM organizations o
                           JOIN subscriptions s ON s.organization_id = o.id
                          WHERE o.deleted_at IS NULL
+                           AND o.status <> 'SUSPENDED'
                            AND (   (s.status = 'TRIALING'  AND (s.trial_ends_at IS NULL OR s.trial_ends_at > now()))
                                 OR  s.status = 'ACTIVE'
                                 OR (s.status = 'PAST_DUE'  AND (s.grace_ends_at IS NULL OR s.grace_ends_at > now())))""")

@@ -6,7 +6,7 @@ import java.util.List;
 
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(Jwt jwt, Signup signup, Cors cors, Crypto crypto, Jobs jobs, Web web, Kcb kcb,
-                            KcbStk kcbStk) {
+                            KcbStk kcbStk, Admin admin) {
 
     public record Jwt(String secret, long accessTokenMinutes, long refreshTokenDays) {}
 
@@ -43,4 +43,12 @@ public record AppProperties(Jwt jwt, Signup signup, Cors cors, Crypto crypto, Jo
 
         public enum Environment { UAT, PRODUCTION }
     }
+
+    /**
+     * The first super admin, created at startup when {@code bootstrapEmail} and {@code bootstrapPassword}
+     * are set and no account uses that email yet. Existing accounts are never changed, so remove the
+     * password from the environment once the admin has signed in.
+     */
+    public record Admin(String bootstrapEmail, String bootstrapPassword, String bootstrapFirstName,
+                        String bootstrapPhone) {}
 }
