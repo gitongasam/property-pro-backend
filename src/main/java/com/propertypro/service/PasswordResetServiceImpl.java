@@ -6,6 +6,7 @@ import com.propertypro.entity.User;
 import com.propertypro.integration.MessageGateways.EmailGateway;
 import com.propertypro.integration.MessageGateways.SmsGateway;
 import com.propertypro.repository.UserRepository;
+import com.propertypro.security.AuthRateLimits;
 import com.propertypro.tenancy.SystemExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,11 +43,13 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final EmailGateway email;
     private final SmsGateway sms;
     private final AppProperties props;
+    private final AuthRateLimits rateLimits;
 
     private record Recent(long lastHour, OffsetDateTime latest) {}
 
     @Override
     public void requestReset(String rawEmail, String ipAddress) {
+        rateLimits.forgotPassword(ipAddress);
         String address = rawEmail.trim();
         User user = system.asSystem(() -> users.findLoginCandidates(address).stream().findFirst().orElse(null));
         if (user == null) {

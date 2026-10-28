@@ -19,6 +19,7 @@ import com.propertypro.repository.PlanRepository;
 import com.propertypro.repository.RefreshTokenRepository;
 import com.propertypro.repository.SubscriptionRepository;
 import com.propertypro.repository.UserRepository;
+import com.propertypro.security.AuthRateLimits;
 import com.propertypro.security.AuthenticatedUser;
 import com.propertypro.security.JwtService;
 import com.propertypro.tenancy.SystemExecutor;
@@ -61,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final JdbcTemplate jdbc;
     private final AppProperties props;
     private final PhoneVerificationService phoneVerification;
+    private final AuthRateLimits rateLimits;
     /** Compared against when the email is unknown, so response time does not reveal which emails exist. */
     private final String dummyHash;
 
@@ -68,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
                            SubscriptionRepository subscriptions, UserRepository users,
                            RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
                            JwtService jwtService, JdbcTemplate jdbc, AppProperties props,
-                           PhoneVerificationService phoneVerification) {
+                           PhoneVerificationService phoneVerification, AuthRateLimits rateLimits) {
         this.system = system;
         this.organizations = organizations;
         this.plans = plans;
@@ -80,6 +82,7 @@ public class AuthServiceImpl implements AuthService {
         this.jdbc = jdbc;
         this.props = props;
         this.phoneVerification = phoneVerification;
+        this.rateLimits = rateLimits;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
@@ -88,6 +91,7 @@ public class AuthServiceImpl implements AuthService {
     // Sign-up: new organisation + trial subscription + owner user
     // ------------------------------------------------------------------
     public AuthResponse signup(SignupRequest req, ClientInfo client) {
+        rateLimits.signup(client.ipAddress());
         String passwordHash = passwordEncoder.encode(req.password());
 
         User owner = system.asSystem(() -> {
@@ -174,10 +178,12 @@ public class AuthServiceImpl implements AuthService {
     // ------------------------------------------------------------------
     public AuthResponse login(LoginRequest req, ClientInfo client) {
         String email = req.email().trim();
+        rateLimits.checkLogin(email, client.ipAddress());
         List<User> candidates = system.asSystem(() -> users.findLoginCandidates(email));
 
         if (candidates.isEmpty()) {
             passwordEncoder.matches(req.password(), dummyHash);
+            rateLimits.loginFailed(email, client.ipAddress());
             throw invalidCredentials();
         }
 
@@ -192,6 +198,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (matching.isEmpty()) {
+            rateLimits.loginFailed(email, client.ipAddress());
             throw invalidCredentials();
         }
         if (matching.size() > 1) {
@@ -203,6 +210,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = matching.getFirst();
+        rateLimits.loginSucceeded(email, client.ipAddress());
         system.asSystem(() -> {
             users.findById(user.getId()).ifPresent(u -> u.setLastLoginAt(OffsetDateTime.now()));
             return null;
@@ -309,7 +317,10 @@ public class AuthServiceImpl implements AuthService {
         User user = system.asSystem(() -> users.findById(principal.userId())
                 .filter(u -> u.getDeletedAt() == null && u.getStatus() == User.Status.ACTIVE)
                 .orElseThrow(() -> ApiException.unauthorized("Account not found")));
+        // Same counters as login, so a stolen session cannot be used to guess the password
+        rateLimits.checkLogin(user.getEmail(), client.ipAddress());
         if (user.getPasswordHash() == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            rateLimits.loginFailed(user.getEmail(), client.ipAddress());
             throw ApiException.badRequest("WRONG_PASSWORD", "Your current password is not right");
         }
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {

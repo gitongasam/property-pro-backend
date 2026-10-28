@@ -1,26 +1,13 @@
 package com.propertypro;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.propertypro.tenancy.SystemExecutor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.UUID;
 
@@ -33,36 +20,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * End-to-end: sign-up, login, refresh rotation and, above all, that one
  * organisation can never see or touch another organisation's data.
- * Needs Docker (Testcontainers starts a real PostgreSQL 16).
+ * Needs Docker (see IntegrationTestBase).
  */
-@Testcontainers
-@SpringBootTest
-@AutoConfigureMockMvc
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class TenantIsolationIntegrationTest {
-
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
-            .withInitScript("db/test-init.sql");
-
-    @DynamicPropertySource
-    static void database(DynamicPropertyRegistry registry) {
-        // The app runs as the restricted account, exactly as in production
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", () -> "propertypro_app");
-        registry.add("spring.datasource.password", () -> "app");
-        // Flyway migrates as the container's owner account
-        registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.flyway.user", POSTGRES::getUsername);
-        registry.add("spring.flyway.password", POSTGRES::getPassword);
-        registry.add("app.jobs.enabled", () -> "false");
-    }
-
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
-    @Autowired SystemExecutor system;
-    @Autowired JdbcTemplate jdbc;
+class TenantIsolationIntegrationTest extends IntegrationTestBase {
 
     String tokenA;
     String refreshA;
@@ -73,12 +35,12 @@ class TenantIsolationIntegrationTest {
 
     @BeforeAll
     void signUpTwoOrganisations() throws Exception {
-        JsonNode a = body(signup("Acacia Properties", "mary@acacia.co.ke", "+254711000001"));
+        JsonNode a = signup("Acacia Properties", "mary@acacia.co.ke", "+254711000001");
         tokenA = a.get("accessToken").asText();
         refreshA = a.get("refreshToken").asText();
         orgA = UUID.fromString(a.at("/user/organization/id").asText());
 
-        JsonNode b = body(signup("Baobab Realty", "peter@baobab.co.ke", "+254711000002"));
+        JsonNode b = signup("Baobab Realty", "peter@baobab.co.ke", "+254711000002");
         tokenB = b.get("accessToken").asText();
         orgB = UUID.fromString(b.at("/user/organization/id").asText());
     }
@@ -216,22 +178,5 @@ class TenantIsolationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].code").value("STARTER"));
-    }
-
-    // ---------------------------------------------------------------- helpers
-
-    private ResultActions signup(String org, String email, String phone) throws Exception {
-        return mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(new java.util.LinkedHashMap<>(java.util.Map.of(
-                                "organizationName", org,
-                                "firstName", "Test",
-                                "email", email,
-                                "phone", phone,
-                                "password", "Str0ng-pass")))))
-                .andExpect(status().isCreated());
-    }
-
-    private JsonNode body(ResultActions result) throws Exception {
-        return json.readTree(result.andReturn().getResponse().getContentAsString());
     }
 }

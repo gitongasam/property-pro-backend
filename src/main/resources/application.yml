@@ -1,5 +1,8 @@
 server:
   port: 8080
+  # Set to "native" behind a proxy you control (nginx, a load balancer) so the client IP
+  # comes from X-Forwarded-For; rate limits are per IP. Leave "none" when exposed directly.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
   error:
     include-message: always
 

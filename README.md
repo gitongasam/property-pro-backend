@@ -45,7 +45,16 @@ mvn spring-boot:run          # Flyway migrates V1..V10 on startup; API on http:/
 
 - API docs: http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
-- `mvn package -DskipTests` builds without Docker. `mvn verify` runs the integration tests, which need Docker (Testcontainers).
+- `mvn package -DskipTests` builds without Docker. `mvn test` runs every test; the integration tests need a
+  database: Docker (Testcontainers starts one), or without Docker a separate local database whose name ends in
+  `_test` (it is **wiped** at the start of every run):
+  ```powershell
+  # once: CREATE DATABASE propertypros_test;   (as postgres)
+  $env:TEST_DB_URL = "jdbc:postgresql://localhost:5432/propertypros_test"
+  mvn test
+  ```
+  `TEST_DB_OWNER_USER`/`TEST_DB_OWNER_PASSWORD` (default postgres/password) and `TEST_DB_APP_USER`/`TEST_DB_APP_PASSWORD`
+  (default propertypro_app/change-me-app) override the accounts. Tests never send real SMS or email.
 
 If you are upgrading a database created from the first backend zip, nothing to do: Flyway applies only V10.
 

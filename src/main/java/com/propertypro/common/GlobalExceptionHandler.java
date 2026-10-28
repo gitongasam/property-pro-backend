@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiError> handleApi(ApiException ex, HttpServletRequest req) {
+        if (ex instanceof RateLimitedException limited) {
+            return ResponseEntity.status(ex.getStatus())
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(limited.getRetryAfterSeconds()))
+                    .body(ApiError.of(ex.getStatus().value(), ex.getCode(), ex.getMessage(), req.getRequestURI()));
+        }
         return respond(ex.getStatus(), ex.getCode(), ex.getMessage(), req);
     }
 
