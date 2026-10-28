@@ -164,6 +164,8 @@ and regular billing starts on the next billing day — no move-in invoice, no do
 | POST | `/api/v1/invoices/{id}/withholding-tax` | PAYMENT_RECORD |
 | POST | `/api/v1/invoices/run-billing` | INVOICE_CREATE |
 | POST | `/api/v1/credit-notes` | CREDIT_NOTE_CREATE |
+| GET, GET `{id}`, GET `/sheet?propertyId=&utility=` | `/api/v1/meter-readings` | METER_READING_RECORD or INVOICE_VIEW |
+| POST, POST `/bulk`, PUT/DELETE `{id}` (latest unbilled only) | `/api/v1/meter-readings` | METER_READING_RECORD |
 | GET | `/api/v1/tenants/{id}/statement?from=&to=` | INVOICE_VIEW |
 | GET, GET `{id}`, POST | `/api/v1/payments` | PAYMENT_VIEW / PAYMENT_RECORD |
 | GET `{id}/suggestions`, POST `{id}/match` | `/api/v1/payments` | PAYMENT_RECONCILE |

@@ -208,8 +208,12 @@ public class BillingServiceImpl implements BillingService {
         return rate == null || lease.getAreaSqft() == null ? "" : " (" + Area.describe(lease.getAreaSqft(), rate) + ")";
     }
 
-    /** Water / electricity: every unbilled reading for the unit up to the period start. */
+    /**
+     * Water / electricity: every unbilled reading for the unit up to the period start. Readings on or
+     * before move-in are left out: what they measure was used before this tenant arrived.
+     */
     private void addMeteredLines(Invoice inv, Lease lease, LeaseCharge charge, LocalDate upTo) {
+        LocalDate movedIn = lease.getMoveInDate() != null ? lease.getMoveInDate() : lease.getStartDate();
         String utility = switch (charge.getChargeType().getCode()) {
             case "ELECTRICITY" -> "ELECTRICITY";
             case "GAS" -> "GAS";
@@ -218,9 +222,9 @@ public class BillingServiceImpl implements BillingService {
         record Reading(UUID id, LocalDate date, BigDecimal consumption) {}
         List<Reading> readings = jdbc.sql("""
                         SELECT id, reading_date, consumption FROM meter_readings
-                         WHERE unit_id = ? AND utility = ? AND NOT billed AND reading_date <= ?
+                         WHERE unit_id = ? AND utility = ? AND NOT billed AND reading_date <= ? AND reading_date > ?
                          ORDER BY reading_date FOR UPDATE""")
-                .param(lease.getUnit().getId()).param(utility).param(upTo)
+                .param(lease.getUnit().getId()).param(utility).param(upTo).param(movedIn)
                 .query((rs, n) -> new Reading(rs.getObject("id", UUID.class), rs.getObject("reading_date", LocalDate.class),
                         rs.getBigDecimal("consumption")))
                 .list();
